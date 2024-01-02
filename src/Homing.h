@@ -15,4 +15,11 @@ namespace Homing
 
 	// For MC
 	std::vector<RE::Actor*> get_targets(uint32_t homingInd, RE::TESObjectREFR* caster, const RE::NiPoint3& origin_pos);
+
+	bool is_homing(RE::Projectile* proj);
+
+	namespace Moving
+	{
+		void change_direction(RE::Projectile* proj, RE::NiPoint3*, float dtime);
+	}
 }

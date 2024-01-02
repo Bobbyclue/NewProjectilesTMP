@@ -161,22 +161,26 @@ namespace Homing
 			auto hostile_filter = data.hostile_filter;
 
 			float mindist2 = 1.0E15f;
-			RE::TESObjectREFR* refr = nullptr;
-			RE::TES::GetSingleton()->ForEachReference([=, &mindist2, &refr](RE::TESObjectREFR& _refr) {
-				if (filter_target(_refr, caster, origin_pos, hostile_filter, check_los, within_dist2)) {
-					float curdist2 = origin_pos.GetSquaredDistance(_refr.GetPosition());
-					if (curdist2 < mindist2) {
-						mindist2 = curdist2;
-						refr = &_refr;
+			RE::Actor* refr = nullptr;
+			RE::ProcessLists* tes = RE::ProcessLists::GetSingleton();
+
+			if (tes) {
+				tes->ForEachHighActor([=, &mindist2, &refr](RE::Actor& _refr) {
+					if (filter_target(_refr, caster, origin_pos, hostile_filter, check_los, within_dist2)) {
+						float curdist2 = origin_pos.GetSquaredDistance(_refr.GetPosition());
+						if (curdist2 < mindist2) {
+							mindist2 = curdist2;
+							refr = &_refr;
+						}
 					}
-				}
-				return RE::BSContainer::ForEachResult::kContinue;
-			});
+					return RE::BSContainer::ForEachResult::kContinue;
+				});
+			}
 
 			if (!refr)
 				return nullptr;
 
-			return refr->As<RE::Actor>();
+			return refr;
 		}
 
 		std::vector<RE::Actor*> get_nearest_targets(RE::TESObjectREFR* caster, const RE::NiPoint3& origin_pos, const Data& data,
@@ -186,13 +190,16 @@ namespace Homing
 			auto hostile_filter = data.hostile_filter;
 
 			std::vector<RE::Actor*> ans;
+			RE::ProcessLists* tes = RE::ProcessLists::GetSingleton();
 
-			RE::TES::GetSingleton()->ForEachReference([=, &ans](RE::TESObjectREFR& _refr) {
-				if (filter_target(_refr, caster, origin_pos, hostile_filter, check_los, within_dist2)) {
-					ans.push_back(_refr.As<RE::Actor>());
-				}
-				return RE::BSContainer::ForEachResult::kContinue;
-			});
+			if (tes) {
+				tes->ForEachHighActor([=, &ans](RE::Actor& _refr) {
+					if (filter_target(_refr, caster, origin_pos, hostile_filter, check_los, within_dist2)) {
+						ans.push_back(&_refr);
+					}
+					return RE::BSContainer::ForEachResult::kContinue;
+				});
+			}
 
 			return ans;
 		}
@@ -241,14 +248,17 @@ namespace Homing
 				auto angle = data.detection_angle;
 				bool check_los = data.check_LOS;
 				auto hostile_filter = data.hostile_filter;
+				RE::ProcessLists* tes = RE::ProcessLists::GetSingleton();
 
-				RE::TES::GetSingleton()->ForEachReference([=, &targets](RE::TESObjectREFR& _refr) {
-					if (filter_target_cursor(_refr, caster, hostile_filter, check_los, angle, within_dist2)) {
-						targets.push_back(
-							{ _refr.As<RE::Actor>(), caster->GetPosition().GetSquaredDistance(_refr.GetPosition()) });
-					}
-					return RE::BSContainer::ForEachResult::kContinue;
-				});
+				if (tes) {
+					tes->ForEachHighActor([=, &targets](RE::Actor& _refr) {
+						if (filter_target_cursor(_refr, caster, hostile_filter, check_los, angle, within_dist2)) {
+							targets.push_back(
+								{ &_refr, caster->GetPosition().GetSquaredDistance(_refr.GetPosition()) });
+						}
+						return RE::BSContainer::ForEachResult::kContinue;
+					});
+				}
 
 				if (!targets.size())
 					return nullptr;
@@ -273,16 +283,18 @@ namespace Homing
 				auto angle = data.detection_angle;
 				bool check_los = data.check_LOS;
 				auto hostile_filter = data.hostile_filter;
+				RE::ProcessLists* tes = RE::ProcessLists::GetSingleton();
 
-				RE::TES::GetSingleton()->ForEachReference([=, &ans](RE::TESObjectREFR& _refr) {
-					if (filter_target_cursor(_refr, caster, hostile_filter, check_los, angle, within_dist2)) {
-						auto refr = _refr.As<RE::Actor>();
-						if (caster->GetPosition().GetSquaredDistance(refr->GetPosition()) < within_dist2) {
-							ans.push_back(refr);
+				if (tes) {
+					tes->ForEachHighActor([=, &ans](RE::Actor& _refr) {
+						if (filter_target_cursor(_refr, caster, hostile_filter, check_los, angle, within_dist2)) {
+							if (caster->GetPosition().GetSquaredDistance(_refr.GetPosition()) < within_dist2) {
+								ans.push_back(&_refr);
+							}
 						}
-					}
-					return RE::BSContainer::ForEachResult::kContinue;
-				});
+						return RE::BSContainer::ForEachResult::kContinue;
+					});
+				}
 
 				return ans;
 			}
@@ -408,8 +420,8 @@ namespace Homing
 				return param;
 			};
 
-			auto V = final_vel;
-			auto speed = proj->linearVelocity.Length();
+			RE::NiPoint3 V = final_vel;
+			float speed = proj->linearVelocity.Length();
 			V.Unitize();
 			V *= speed;
 			V -= proj->linearVelocity;
@@ -425,8 +437,8 @@ namespace Homing
 		{
 			RE::NiPoint3 final_vel;
 			auto& data = Storage::get_data(get_homing_ind(proj));
-			if (auto target = Targeting::findTarget(proj, data); target && get_shoot_dir(proj, target, dtime, final_vel)) {
-				auto val1 = data.val1;
+			if (RE::Actor* target = Targeting::findTarget(proj, data); target && get_shoot_dir(proj, target, dtime, final_vel)) {
+				float val1 = data.val1;
 				auto type = data.type;
 				switch (type) {
 				case HomingTypes::ConstSpeed:
@@ -483,14 +495,17 @@ namespace Homing
 			static inline REL::Relocation<decltype(ShouldUseDesiredTarget)> _ShouldUseDesiredTarget;
 		};
 
+		/*
 		// Make projectile move to the target
 		class HomingMissilesHook
 		{
 		public:
 			static void Hook()
 			{
-				_Projectile__ApplyGravity = SKSE::GetTrampoline().write_call<5>(REL::ID(43006).address() + 0x69,
+				// Moved to Followers hook in AE port
+				_Projectile__ApplyGravity = SKSE::GetTrampoline().write_call<5>(RELOCATION_ID(43006, 44197).address() + 0x69,
 					change_direction);  // SkyrimSE.exe+751309
+				
 			}
 
 		private:
@@ -505,6 +520,7 @@ namespace Homing
 
 			static inline REL::Relocation<decltype(change_direction)> _Projectile__ApplyGravity;
 		};
+		*/
 
 #ifdef DEBUG
 		namespace Debug
@@ -668,7 +684,7 @@ namespace Homing
 		using namespace Hooks;
 
 		HomingFlamesHook::Hook();
-		HomingMissilesHook::Hook();
+		//HomingMissilesHook::Hook(); // Moved to Followers hook in AE port
 
 #ifdef DEBUG
 		Debug::CursorDetectedHook::Hook();

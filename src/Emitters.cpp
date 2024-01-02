@@ -211,7 +211,9 @@ namespace Emitters
 			set_emitter_rest(proj, rest - 1);
 			if (rest == 1) {
 				if (data.destroy_after) {
-					proj->Kill();
+					// proj->Kill();				// Function does not exist, no clue what it did
+					proj->Disable();				// Temp "fix" for AE port
+					proj->SetDelete(true);
 				} else {
 					disable_emitter(proj);
 				}
@@ -226,11 +228,11 @@ namespace Emitters
 		public:
 			static void Hook()
 			{
-				_CheckExplosion = SKSE::GetTrampoline().write_call<5>(REL::ID(42852).address() + 0x680,
+				_CheckExplosion = SKSE::GetTrampoline().write_call<5>(RELOCATION_ID(42852, 44027).address() + 0x6E1,
 					CheckExplosion);  // SkyrimSE.exe+745450
-				_AddImpact = SKSE::GetTrampoline().write_call<5>(REL::ID(42547).address() + 0x56,
+				_AddImpact = SKSE::GetTrampoline().write_call<5>(RELOCATION_ID(42547, 43710).address() + 0x50,
 					AddImpact);  // SkyrimSE.exe+732456 -- disable on hit
-				_BSSoundHandle__ClearFollowedObject = SKSE::GetTrampoline().write_call<5>(REL::ID(42930).address() + 0x21,
+				_BSSoundHandle__ClearFollowedObject = SKSE::GetTrampoline().write_call<5>(RELOCATION_ID(42930, 44110).address() + 0x21,
 					BSSoundHandle__ClearFollowedObject);  // SkyrimSE.exe+74BC21 -- disable on kill
 			}
 

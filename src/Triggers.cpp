@@ -248,35 +248,35 @@ namespace Triggers
 			static void Hook()
 			{
 				// arrow->unk140 = 0i64; with arrow=nullptr
-				FenixUtils::writebytes<17693, 0xefa>("\x0F\x1F\x80\x00\x00\x00\x00"sv);
+				FenixUtils::writebytes<18102, 0xFAB>("\x0F\x1F\x80\x00\x00\x00\x00"sv); // AE ???
 				// SkyrimSE.exe+2360C2 -- TESObjectWEAP::Fire_140235240
-				_LaunchArrow = SKSE::GetTrampoline().write_call<5>(REL::ID(17693).address() + 0xe82, LaunchArrow);
+				_LaunchArrow = SKSE::GetTrampoline().write_call<5>(RELOCATION_ID(17693, 18102).address() + 0xE60, LaunchArrow);
 
 				// 1405504F5 -- MagicCaster::FireProjectileFromSource
-				_FireProjectile1 = SKSE::GetTrampoline().write_call<5>(REL::ID(33670).address() + 0x575, FireProjectile1);
+				_FireProjectile1 = SKSE::GetTrampoline().write_call<5>(RELOCATION_ID(33670, 34450).address() + 0x575, FireProjectile1);
 				// SkyrimSE.exe+5504F5 -- MagicCaster::FireProjectile_0
-				_FireProjectile2 = SKSE::GetTrampoline().write_call<5>(REL::ID(33671).address() + 0x125, FireProjectile2);
+				_FireProjectile2 = SKSE::GetTrampoline().write_call<5>(RELOCATION_ID(33671, 34451).address() + 0x122, FireProjectile2);
 
 				// 140628dd7 Actor::CombatHit
-				_InitializeHitData = SKSE::GetTrampoline().write_call<5>(REL::ID(37673).address() + 0x1b7, InitializeHitData);
+				_InitializeHitData = SKSE::GetTrampoline().write_call<5>(RELOCATION_ID(37673, 38627).address() + 0x1C6, InitializeHitData);
 
 				// 140628dc8 Actor::CombatHit
 				_InitializeHitDataProj =
-					SKSE::GetTrampoline().write_call<5>(REL::ID(37673).address() + 0x1a8, InitializeHitDataProj);
+					SKSE::GetTrampoline().write_call<5>(RELOCATION_ID(37673, 38627).address() + 0x1B7, InitializeHitDataProj);
 
 				// 1407211ea HitFrameHandler::Handle
-				_DoMeleeAttack = SKSE::GetTrampoline().write_call<5>(REL::ID(41747).address() + 0x3a, DoMeleeAttack);
+				_DoMeleeAttack = SKSE::GetTrampoline().write_call<5>(RELOCATION_ID(41747, 42828).address() + 0x3a, DoMeleeAttack);
 
 				// 1407211ea Actor::MagicTarget::AddTarget
-				_AddTarget = SKSE::GetTrampoline().write_call<5>(REL::ID(37832).address() + 0x8e, AddTarget);
+				_AddTarget = SKSE::GetTrampoline().write_call<5>(RELOCATION_ID(37832, 38786).address() + 0x16D, AddTarget);
 
 				// 140550a37 MagicCaster::FireProjectile
-				_Launch1 = SKSE::GetTrampoline().write_call<5>(REL::ID(33672).address() + 0x377, Launch1);
+				_Launch1 = SKSE::GetTrampoline().write_call<5>(RELOCATION_ID(33672, 34452).address() + 0x354, Launch1);
 
 				// 140550a37 TESObjectWEAP::Fire
-				_Launch2 = SKSE::GetTrampoline().write_call<5>(REL::ID(17693).address() + 0xe82, Launch2);
+				_Launch2 = SKSE::GetTrampoline().write_call<5>(RELOCATION_ID(17693, 18102).address() + 0xE60, Launch2);
 
-				_CalcVelocityVector = SKSE::GetTrampoline().write_call<5>(REL::ID(43030).address() + 0x3b8,
+				_CalcVelocityVector = SKSE::GetTrampoline().write_call<5>(RELOCATION_ID(43030, 44222).address() + 0x78A,
 					CalcVelocityVector);  // SkyrimSE.exe+754bd8
 			}
 
@@ -403,7 +403,7 @@ namespace Triggers
 			static bool AddTarget(RE::MagicTarget* mtarget, RE::MagicTarget::AddTargetData* addData)
 			{
 				if (_AddTarget(mtarget, addData)) {
-					auto a = (RE::Actor*)((char*)mtarget - 0x98);
+					auto a = mtarget->GetTargetStatsObject()->As<RE::Actor>();  // (RE::Actor*)((char*)mtarget - 0x98);
 
 					Data data(nullptr, a, nullptr, addData->magicItem, addData->effect ? addData->effect->baseEffect : nullptr,
 						nullptr, addData->castingSource, Data::Type::None, { a->GetAimAngle(), a->GetAimHeading() },

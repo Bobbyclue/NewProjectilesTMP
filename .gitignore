@@ -1,2 +1,6 @@
 build/
 bin/
+CommonLibSSE/
+UselessFenixUtils/
+.vs
+.vscode

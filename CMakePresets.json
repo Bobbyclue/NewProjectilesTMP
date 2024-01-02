@@ -6,7 +6,8 @@
         "CMAKE_BUILD_TYPE": {
           "type": "STRING",
           "value": "Release"
-        }
+        },
+        "SKYRIM_SUPPORT_AE": "ON"
       },
       "errors": {
         "deprecated": true

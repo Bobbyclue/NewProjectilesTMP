@@ -228,17 +228,7 @@ namespace Multicast
 	{
 		RE::BGSSoundDescriptorForm* EffectSetting__get_sndr(RE::EffectSetting* a1, RE::MagicSystem::SoundID sid)
 		{
-			return _generic_foo_<11001, decltype(EffectSetting__get_sndr)>::eval(a1, sid);
-		}
-
-		void PlaySound_func3_140BEDB10(RE::BSSoundHandle* a1, RE::NiAVObject* source_node)
-		{
-			return _generic_foo_<66375, decltype(PlaySound_func3_140BEDB10)>::eval(a1, source_node);
-		}
-
-		char set_sound_position(RE::BSSoundHandle* shandle, float x, float y, float z)
-		{
-			return _generic_foo_<66370, decltype(set_sound_position)>::eval(shandle, x, y, z);
+			return _generic_foo_<11073, decltype(EffectSetting__get_sndr)>::eval(a1, sid);  // 1101
 		}
 
 		RE::BSSoundHandle tmpsound;
@@ -250,12 +240,15 @@ namespace Multicast
 				auto sid = RE::MagicSystem::SoundID::kRelease;
 				if (auto eff = FenixUtils::getAVEffectSetting(spel)) {
 					if (auto sndr = EffectSetting__get_sndr(eff, sid)) {
-						RE::BSAudioManager::GetSingleton()->BuildSoundDataFromDescriptor(shandle, sndr, 0);
-						if (shandle.IsValid()) {
-							PlaySound_func3_140BEDB10(&shandle, root);
-
-							set_sound_position(&shandle, start_pos.x, start_pos.y, start_pos.z);
-							shandle.Play();
+						if (RE::BSAudioManager* audMan = RE::BSAudioManager::GetSingleton()) {
+							
+							audMan->BuildSoundDataFromDescriptor(shandle, sndr, 0);
+							if (shandle.IsValid()) {
+								shandle.SetObjectToFollow(root);
+								shandle.SetPosition(start_pos);
+								shandle.Play();
+							}
+							
 						}
 					}
 				}
@@ -486,9 +479,11 @@ namespace Multicast
 				if (homingInd) {
 					targets = Homing::get_targets(homingInd, caster, SP_CD.start_pos);
 
-					std::random_device rd;
-					std::mt19937 g(rd());
-					std::shuffle(targets.begin(), targets.end(), g);
+					if (!targets.empty()) {
+						std::random_device rd;
+						std::mt19937 g(rd());
+						std::shuffle(targets.begin(), targets.end(), g);
+					}
 				}
 			}
 
@@ -507,8 +502,8 @@ namespace Multicast
 
 				RE::Actor* target = nullptr;
 
-				if (targets.size()) {
-					target = targets[target_ind++];
+				if (!targets.empty()) {
+					target = targets.at(target_ind++);
 					if (target_ind >= targets.size())
 						target_ind = 0;
 				}

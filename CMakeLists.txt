@@ -74,6 +74,8 @@ endif ()
 
 # ---- Dependencies ----
 
+set(SKYRIM_SUPPORT_AE ON CACHE BOOL "Enable AE Support")
+
 if (DEFINED UseUselessUtils AND UseUselessUtils)
 	add_subdirectory($ENV{UselessFenixUtils} ./UselessFenixUtils)
 else ()
@@ -201,7 +203,7 @@ if (MSVC)
 			/external:anglebrackets
 			/external:W0
 
-			/W4	# Warning level
+			/W3	# Warning level
 			/WX	# Warning level (warnings are errors)
 
 			"$<$<CONFIG:DEBUG>:>"

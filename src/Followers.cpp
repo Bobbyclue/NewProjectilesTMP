@@ -3,6 +3,7 @@
 #include "RuntimeData.h"
 #include <algorithm>
 #include "Positioning.h"
+#include "Homing.h"
 
 namespace Followers
 {
@@ -89,20 +90,26 @@ namespace Followers
 
 	namespace Moving
 	{
-		auto get_target_point(RE::Projectile* proj)
+		RE::NiPoint3 get_target_point(RE::Projectile* proj)
 		{
-			auto& data = Storage::get_data(get_follower_ind(proj));
+			RE::NiPoint3 ni;
 
-			RE::NiPoint3 final_vel;
-			auto caster = proj->shooter.get().get()->As<RE::Actor>();
-			RE::Projectile::ProjectileRot dir{ caster->GetAngleX(), caster->GetAngleZ() };
+			if (proj) {
+				auto& data = Storage::get_data(get_follower_ind(proj));
 
-			RE::NiPoint3 spawn_center = caster->GetPosition();
-			data.pattern.initCenter(spawn_center, dir, caster);
-			RE::NiPoint3 cast_dir = data.pattern.getCastDir(dir);
-			cast_dir.Unitize();
+				RE::TESObjectREFR* caster = proj->shooter.get().get();
+				if (caster) {
+					RE::Projectile::ProjectileRot dir{ caster->GetAngleX(), caster->GetAngleZ() };
 
-			return data.pattern.GetPosition(spawn_center, cast_dir, get_follower_shape_ind(proj));
+					RE::NiPoint3 spawn_center = caster->GetPosition();
+					data.pattern.initCenter(spawn_center, dir, caster);
+					RE::NiPoint3 cast_dir = data.pattern.getCastDir(dir);
+					cast_dir.Unitize();
+
+					ni = data.pattern.GetPosition(spawn_center, cast_dir, get_follower_shape_ind(proj));
+				}
+			}
+			return ni;
 		}
 
 		RE::NiPoint2 rotate(RE::NiPoint2 P, float alpha)
@@ -279,32 +286,35 @@ namespace Followers
 		
 		void change_direction(RE::Projectile* proj, RE::NiPoint3*, float dtime)
 		{
-			auto target_pos = get_target_point(proj);
+			if (proj) {
+				RE::NiPoint3 target_pos = get_target_point(proj);
 
-			auto& data = Storage::get_data(get_follower_ind(proj));
-			switch (data.rounding) {
-			case Rounding::Sphere:
-				//change_direction_rounding_sphere(proj, target_pos, dtime);
-				break;
-			case Rounding::Plane:
-				//change_direction_rounding_plane(proj, target_pos, dtime);
-				break;
-			case Rounding::None:
-			default:
-				change_direction_linVel(proj, target_pos, data.speed_mult);
-				break;
-			}
+				const Followers::Data data = Storage::get_data(get_follower_ind(proj));
 
-			// Smooth rotating
-			RE::NiPoint3 proj_dir;
-			if (proj->linearVelocity.SqrLength() > 30.0f) {
-				proj_dir = proj->linearVelocity;
-			} else {
-				auto proj_dir_final = FenixUtils::Geom::angles2dir(proj->shooter.get().get()->data.angle);
-				auto proj_dir_cur = FenixUtils::Geom::angles2dir(proj->data.angle);
-				proj_dir = FenixUtils::Geom::rotateVel(proj_dir_cur, data.speed_mult * dtime, proj_dir_final);
+				switch (data.rounding) {
+				case Rounding::Sphere:
+					//change_direction_rounding_sphere(proj, target_pos, dtime);
+					break;
+				case Rounding::Plane:
+					//change_direction_rounding_plane(proj, target_pos, dtime);
+					break;
+				case Rounding::None:
+				default:
+					change_direction_linVel(proj, target_pos, data.speed_mult);
+					break;
+				}
+
+				// Smooth rotating
+				RE::NiPoint3 proj_dir;
+				if (proj->linearVelocity.SqrLength() > 30.0f) {
+					proj_dir = proj->linearVelocity;
+				} else {
+					RE::NiPoint3 proj_dir_final = FenixUtils::Geom::angles2dir(proj->shooter.get()->GetAngle());
+					RE::NiPoint3 proj_dir_cur = FenixUtils::Geom::angles2dir(proj->GetAngle());
+					proj_dir = FenixUtils::Geom::rotateVel(proj_dir_cur, data.speed_mult * dtime, proj_dir_final);
+				}
+				FenixUtils::Geom::Projectile::update_node_rotation(proj, proj_dir);
 			}
-			FenixUtils::Geom::Projectile::update_node_rotation(proj, proj_dir);
 		}
 
 		void change_direction_instant(RE::Projectile* proj, RE::NiPoint3* dV)
@@ -344,13 +354,64 @@ namespace Followers
 		public:
 			static void Hook()
 			{
-				_Projectile__apply_gravity = SKSE::GetTrampoline().write_call<5>(REL::ID(43006).address() + 0x69,
+				SKSE::Trampoline& trampoline = SKSE::GetTrampoline();
+
+				trampoline.write_call<5>(RELOCATION_ID(37684, 38639).address() + 0xA79, ProjectileMove);
+				trampoline.write_call<5>(RELOCATION_ID(42624, 43789).address() + 0x155, ProjectileMove);
+				trampoline.write_call<5>(RELOCATION_ID(42419, 44027).address() + 0x630, ProjectileMove);
+
+				/*
+				_Projectile__apply_gravity = SKSE::GetTrampoline().write_call<5>(RELOCATION_ID(43006, 44197).address() + 0x69,
 					change_direction);  // SkyrimSE.exe+751309
-				_Projectile__MovePoint = SKSE::GetTrampoline().write_call<5>(REL::ID(43006).address() + 0x85,
+				_Projectile__MovePoint = SKSE::GetTrampoline().write_call<5>(RELOCATION_ID(43006, 44197).address() + 0x85,
 					change_direction_instant);  // 140751325
+				*/
 			}
 
 		private:
+			static void ProjectileMove(RE::Projectile* proj, float dtime)
+			{
+				if (proj) {
+					RE::NiPoint3 dV;
+					RE::NiPoint3 vel;
+
+					vel = proj->linearVelocity;
+					dV.x = vel.x * dtime;
+					dV.y = vel.y * dtime;
+					dV.z = vel.z * dtime;
+
+					typedef bool apply_gravity(RE::Projectile*, RE::NiPoint3*, float);
+					apply_gravity* _Projectile__apply_gravity = (apply_gravity*)RELOCATION_ID(42992, 44175).address();
+
+					_Projectile__apply_gravity(proj, &dV, dtime);
+
+					const bool isfollower = is_follower(proj);
+
+					if (isfollower) {
+						Moving::change_direction(proj, &dV, dtime);
+					} 
+					if (Homing::is_homing(proj)) {
+						Homing::Moving::change_direction(proj, &dV, dtime);
+					}
+
+#pragma warning(disable:4804)
+					if (~(!proj->flags < 0)) {
+#pragma warning(default: 4804)
+						proj->flags |= RE::Projectile::Flags::kMoved;
+					}
+
+					if (isfollower) {
+						Moving::change_direction_instant(proj, &dV);
+					}
+
+					typedef void move_point(RE::Projectile*, RE::NiPoint3*);
+					move_point* _Projectile__MovePoint = (move_point*)RELOCATION_ID(43007, 44198).address();
+
+					_Projectile__MovePoint(proj, &dV);
+				}
+			}
+
+			/* // Moved in AE port
 			static bool change_direction(RE::Projectile* proj, RE::NiPoint3* dV, float dtime)
 			{
 				bool ans = _Projectile__apply_gravity(proj, dV, dtime);
@@ -371,6 +432,7 @@ namespace Followers
 
 			static inline REL::Relocation<decltype(change_direction)> _Projectile__apply_gravity;
 			static inline REL::Relocation<decltype(change_direction_instant)> _Projectile__MovePoint;
+			*/
 		};
 
 		class NoCollisionHook
@@ -391,7 +453,7 @@ namespace Followers
 						}
 					} xbyakCode{ uintptr_t(InitHavok__GetCollisionLayer) };
 
-					_InitHavok__GetCollisionLayer = add_trampoline<5, 42934, 0x9d, true>(&xbyakCode);  // SkyrimSE.exe+74beed
+					_InitHavok__GetCollisionLayer = add_trampoline<5, 44113, 0x9d, true>(&xbyakCode);  // SkyrimSE.exe+74beed // 42934 + 0x9d
 				}
 
 				{
@@ -407,7 +469,7 @@ namespace Followers
 						}
 					} xbyakCode{ uintptr_t(TargetPick__GetCollisionLayer) };
 
-					_TargetPick__GetCollisionLayer = add_trampoline<5, 42982, 0x187, true>(&xbyakCode);  // SkyrimSE.exe+74ee97
+					_TargetPick__GetCollisionLayer = add_trampoline<5, 44165, 0x160, true>(&xbyakCode);  // SkyrimSE.exe+74ee97 // 42982 + 0x187
 				}
 
 				{
@@ -423,7 +485,7 @@ namespace Followers
 						}
 					} xbyakCode{ uintptr_t(PlayerSmth__GetCollisionLayer) };
 
-					_PlayerSmth__GetCollisionLayer = add_trampoline<5, 37684, 0x680, true>(&xbyakCode);  // SkyrimSE.exe+62b0e0
+					_PlayerSmth__GetCollisionLayer = add_trampoline<5, 38639, 0x6E9, true>(&xbyakCode);  // SkyrimSE.exe+62b0e0 // 37684 + 0x680
 				}
 
 				{
@@ -439,7 +501,7 @@ namespace Followers
 						}
 					} xbyakCode{ uintptr_t(MissileImpale__GetCollisionLayer) };
 
-					_MissileImpale__GetCollisionLayer = add_trampoline<5, 42855, 0xd0f, true>(&xbyakCode);  // SkyrimSE.exe+7467ef
+					_MissileImpale__GetCollisionLayer = add_trampoline<5, 44030, 0xD74, true>(&xbyakCode);  // SkyrimSE.exe+7467ef // 42855 + 0xd0f
 				}
 			}
 
@@ -491,7 +553,7 @@ namespace Followers
 	{
 		auto baseType = get_follower_ind(proj);
 		for (auto& i : a) {
-			if (auto _proj = i.get().get(); _proj && get_follower_ind(_proj) == baseType && _proj->formID != proj->formID) {
+			if (auto _proj = i.get().get(); _proj && get_follower_ind(_proj) == baseType && _proj->GetFormID() != proj->GetFormID()) {
 				uint32_t ind = get_follower_shape_ind(_proj);
 				ans.erase(ind);
 			}

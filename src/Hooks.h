@@ -14,9 +14,9 @@ namespace Hooks
 			auto& trmpl = SKSE::GetTrampoline();
 
 			_TESForm__SetInitedFormFlag_140194B90 =
-				trmpl.write_call<5>(REL::ID(42920).address() + 0x392, Ctor);  // SkyrimSE.exe+74ACE2
+				trmpl.write_call<5>(RELOCATION_ID(42920, 44100).address() + 0x396, Ctor);  // SkyrimSE.exe+74ACE2
 			_TESObjectREFR__ReadFromSaveGame_140286FD0 =
-				trmpl.write_call<5>(REL::ID(42953).address() + 0x4b, LoadGame);  // SkyrimSE.exe+74D28B
+				trmpl.write_call<5>(RELOCATION_ID(42953, 44134).address() + 0x52, LoadGame);  // SkyrimSE.exe+74D28B
 		}
 
 	private:
@@ -45,11 +45,11 @@ namespace Hooks
 		{
 			auto& trmpl = SKSE::GetTrampoline();
 
-			_RefHandle__get = trmpl.write_call<5>(REL::ID(42928).address() + 0x117, NewBeam);  // SkyrimSE.exe+74B287
+			_RefHandle__get = trmpl.write_call<5>(RELOCATION_ID(42928, 44108).address() + 0x118, NewBeam);  // SkyrimSE.exe+74B287
 
 			{
 				// SkyrimSE.exe+733F93
-				uintptr_t ret_addr = REL::ID(42586).address() + 0x2d3;
+				uintptr_t ret_addr = RELOCATION_ID(42586, 43749).address() + 0x2CF;
 
 				struct Code : Xbyak::CodeGenerator
 				{
@@ -67,13 +67,13 @@ namespace Hooks
 					}
 				} xbyakCode{ uintptr_t(update_node_pos), ret_addr };
 
-				FenixUtils::add_trampoline<5, 42586, 0x2c1>(&xbyakCode);  // SkyrimSE.exe+733F81
+				FenixUtils::add_trampoline<5, 43749, 0x2BD>(&xbyakCode);  // SkyrimSE.exe+733F81 // 42586 + 0x2c1
 			}
 
 			_TESObjectREFR__SetPosition_140296910 =
-				trmpl.write_call<5>(REL::ID(42586).address() + 0x2db, UpdatePos);                         // SkyrimSE.exe+733F9B
-			_Projectile__SetRotation = trmpl.write_call<5>(REL::ID(42586).address() + 0x249, UpdateRot);  // SkyrimSE.exe+733F09
-			_matrix_mul = trmpl.write_call<5>(REL::ID(42586).address() + 0x212, matrix_mul);
+				trmpl.write_call<5>(RELOCATION_ID(42586, 43749).address() + 0x2D7, UpdatePos);            // SkyrimSE.exe+733F9B
+			_Projectile__SetRotation = trmpl.write_call<5>(RELOCATION_ID(42586, 43749).address() + 0x245, UpdateRot);  // SkyrimSE.exe+733F09
+			_matrix_mul = trmpl.write_call<5>(RELOCATION_ID(42586, 43749).address() + 0x20E, matrix_mul);
 		}
 
 	private:
@@ -135,7 +135,7 @@ namespace Hooks
 		static void Hook()
 		{
 			_BeamProjectile__ctor =
-				SKSE::GetTrampoline().write_call<5>(REL::ID(42928).address() + 0x185, Ctor);  // SkyrimSE.exe+74B2F5
+				SKSE::GetTrampoline().write_call<5>(RELOCATION_ID(42928, 44108).address() + 0x186, Ctor);  // SkyrimSE.exe+74B2F5
 		}
 
 	private:
