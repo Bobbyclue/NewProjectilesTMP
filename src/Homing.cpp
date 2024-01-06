@@ -405,10 +405,20 @@ namespace Homing
 				return 3.1415926f / param;
 			};
 
-			auto final_dir = final_vel;
+			RE::NiPoint3 final_dir = final_vel;
 			final_dir.Unitize();
-			proj->linearVelocity = FenixUtils::Geom::rotateVel(proj->linearVelocity, get_rotation_speed(proj, param) * dtime,
-				proj->linearVelocity.UnitCross(final_dir));
+			float needed_angle = acosf(std::min(1.0f, proj->linearVelocity.Dot(final_dir) / proj->linearVelocity.Length()));
+
+			if (abs(needed_angle) >= 0.001f) {
+				float max_alpha = get_rotation_speed(proj, param) * dtime;
+				float phi{ 0 };
+				if (needed_angle >= 0)
+					phi = std::min(max_alpha, needed_angle);
+				else
+					phi = std::max(-max_alpha, needed_angle);
+				proj->linearVelocity =
+					FenixUtils::Geom::rotate(proj->linearVelocity, phi, proj->linearVelocity.UnitCross(final_dir));
+			}
 		}
 
 		// constant acceleration length
