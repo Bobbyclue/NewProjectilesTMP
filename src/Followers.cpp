@@ -506,9 +506,9 @@ namespace Followers
 			}
 
 		private:
-			static RE::COL_LAYER GetCollisionLayer(RE::Projectile* proj, RE::COL_LAYER origin)
+			static RE::COL_LAYER GetCollisionLayer(RE::Projectile* proj, RE::COL_LAYER origin, RE::BGSProjectile* bproj)
 			{
-				if (is_follower(proj)) {
+				if (!bproj->data.flags.any(RE::BGSProjectileData::BGSProjectileFlags::kHitScan) && is_follower(proj)) {
 					auto& data = Storage::get_data(get_follower_ind(proj));
 					switch (data.collision) {
 					case Collision::Actor:
@@ -526,19 +526,19 @@ namespace Followers
 
 			static RE::COL_LAYER InitHavok__GetCollisionLayer(RE::BGSProjectile* bproj, RE::Projectile* proj)
 			{
-				return GetCollisionLayer(proj, _InitHavok__GetCollisionLayer(bproj));
+				return GetCollisionLayer(proj, _InitHavok__GetCollisionLayer(bproj), bproj);
 			}
 			static RE::COL_LAYER TargetPick__GetCollisionLayer(RE::BGSProjectile* bproj, RE::Projectile* proj)
 			{
-				return GetCollisionLayer(proj, _TargetPick__GetCollisionLayer(bproj));
+				return GetCollisionLayer(proj, _TargetPick__GetCollisionLayer(bproj), bproj);
 			}
 			static RE::COL_LAYER PlayerSmth__GetCollisionLayer(RE::BGSProjectile* bproj, RE::Projectile* proj)
 			{
-				return GetCollisionLayer(proj, _PlayerSmth__GetCollisionLayer(bproj));
+				return GetCollisionLayer(proj, _PlayerSmth__GetCollisionLayer(bproj), bproj);
 			}
 			static RE::COL_LAYER MissileImpale__GetCollisionLayer(RE::BGSProjectile* bproj, RE::Projectile* proj)
 			{
-				return GetCollisionLayer(proj, _MissileImpale__GetCollisionLayer(bproj));
+				return GetCollisionLayer(proj, _MissileImpale__GetCollisionLayer(bproj), bproj);
 			}
 			
 			using func_t = RE::COL_LAYER(RE::BGSProjectile*);
