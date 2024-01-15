@@ -508,7 +508,7 @@ namespace Followers
 		private:
 			static RE::COL_LAYER GetCollisionLayer(RE::Projectile* proj, RE::COL_LAYER origin, RE::BGSProjectile* bproj)
 			{
-				if (!bproj->data.flags.any(RE::BGSProjectileData::BGSProjectileFlags::kHitScan) && is_follower(proj)) {
+				if (proj && bproj && !bproj->data.flags.any(RE::BGSProjectileData::BGSProjectileFlags::kHitScan) && !bproj->IsBeam() && is_follower(proj)) {
 					auto& data = Storage::get_data(get_follower_ind(proj));
 					switch (data.collision) {
 					case Collision::Actor:

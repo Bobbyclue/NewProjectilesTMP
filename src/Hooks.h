@@ -79,9 +79,9 @@ namespace Hooks
 	private:
 		static RE::NiMatrix3* matrix_mul(RE::NiMatrix3* A, RE::NiMatrix3* ans, RE::NiMatrix3* B)
 		{
-			auto proj = (RE::Projectile*)((char*)A - 0xA8);
-			if (allows_multiple_beams(proj)) {
-				auto node = proj->Get3D2();
+			RE::Projectile* proj = (RE::Projectile*)((char*)A - 0xB0);  // SE 0xA8
+			if (proj && allows_multiple_beams(proj)) {
+				RE::NiAVObject* node = proj->Get3D2();
 				return &node->local.rotate;
 			} else {
 				return _matrix_mul(A, ans, B);
