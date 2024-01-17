@@ -38,32 +38,35 @@ namespace Homing
 
 	struct Storage
 	{
-		static void init(const Json::Value& HomingData)
+		static void clear_keys() { keys.clear(); }
+		static void clear()
 		{
+			clear_keys();
 			data_static.clear();
+		}
 
+		static void init(const std::string& filename, const Json::Value& HomingData)
+		{
 			for (auto& key : HomingData.getMemberNames()) {
-				read_json_entry(key, HomingData[key]);
+				read_json_entry(filename, key, HomingData[key]);
 			}
 		}
 
-		static void init_keys(const Json::Value& HomingData)
+		static void init_keys(const std::string& filename, const Json::Value& HomingData)
 		{
-			keys.init();
-
 			for (auto& key : HomingData.getMemberNames()) {
-				read_json_entry_keys(key, HomingData[key]);
+				read_json_entry_keys(filename, key, HomingData[key]);
 			}
 		}
 
 		static const auto& get_data(uint32_t ind) { return data_static[ind - 1]; }
 
-		static uint32_t get_key_ind(const std::string& key) { return keys.get(key); }
+		static uint32_t get_key_ind(const std::string& filename, const std::string& key) { return keys.get(filename, key); }
 
 	private:
-		static void read_json_entry(const std::string& key, const Json::Value& item)
+		static void read_json_entry(const std::string& filename, const std::string& key, const Json::Value& item)
 		{
-			[[maybe_unused]] uint32_t ind = keys.get(key);
+			[[maybe_unused]] uint32_t ind = keys.get(filename, key);
 			assert(ind == data_static.size() + 1);
 
 			auto type = JsonUtils::read_enum<HomingTypes>(item, "type");
@@ -92,7 +95,10 @@ namespace Homing
 			data_static.emplace_back(type, target, check_los, aggressive, detection_angle, val1);
 		}
 
-		static void read_json_entry_keys(const std::string& key, const Json::Value&) { keys.add(key); }
+		static void read_json_entry_keys(const std::string& filename, const std::string& key, const Json::Value&)
+		{
+			keys.add(filename, key);
+		}
 
 		static inline JsonUtils::KeysMap keys;
 		static inline std::vector<Data> data_static;
@@ -101,7 +107,7 @@ namespace Homing
 	// used in multicast evenly
 	const Data& get_data(uint32_t ind) { return Storage::get_data(ind); }
 
-	uint32_t get_key_ind(const std::string& key) { return Storage::get_key_ind(key); }
+	uint32_t get_key_ind(const std::string& filename, const std::string& key) { return Storage::get_key_ind(filename, key); }
 
 	void set_homing_ind(RE::Projectile* proj, uint32_t ind) { ::set_homing_ind(proj, ind); }
 	uint32_t get_homing_ind(RE::Projectile* proj) { return ::get_homing_ind(proj); }
@@ -165,12 +171,12 @@ namespace Homing
 			RE::ProcessLists* tes = RE::ProcessLists::GetSingleton();
 
 			if (tes) {
-				tes->ForEachHighActor([=, &mindist2, &refr](RE::Actor& _refr) {
-					if (filter_target(_refr, caster, origin_pos, hostile_filter, check_los, within_dist2)) {
-						float curdist2 = origin_pos.GetSquaredDistance(_refr.GetPosition());
+				tes->ForEachHighActor([=, &mindist2, &refr](RE::Actor* _refr) {
+					if (filter_target(*_refr, caster, origin_pos, hostile_filter, check_los, within_dist2)) {
+						float curdist2 = origin_pos.GetSquaredDistance(_refr->GetPosition());
 						if (curdist2 < mindist2) {
 							mindist2 = curdist2;
-							refr = &_refr;
+							refr = _refr;
 						}
 					}
 					return RE::BSContainer::ForEachResult::kContinue;
@@ -193,9 +199,9 @@ namespace Homing
 			RE::ProcessLists* tes = RE::ProcessLists::GetSingleton();
 
 			if (tes) {
-				tes->ForEachHighActor([=, &ans](RE::Actor& _refr) {
-					if (filter_target(_refr, caster, origin_pos, hostile_filter, check_los, within_dist2)) {
-						ans.push_back(&_refr);
+				tes->ForEachHighActor([=, &ans](RE::Actor* _refr) {
+					if (filter_target(*_refr, caster, origin_pos, hostile_filter, check_los, within_dist2)) {
+						ans.push_back(_refr);
 					}
 					return RE::BSContainer::ForEachResult::kContinue;
 				});
@@ -251,10 +257,10 @@ namespace Homing
 				RE::ProcessLists* tes = RE::ProcessLists::GetSingleton();
 
 				if (tes) {
-					tes->ForEachHighActor([=, &targets](RE::Actor& _refr) {
-						if (filter_target_cursor(_refr, caster, hostile_filter, check_los, angle, within_dist2)) {
+					tes->ForEachHighActor([=, &targets](RE::Actor* _refr) {
+						if (filter_target_cursor(*_refr, caster, hostile_filter, check_los, angle, within_dist2)) {
 							targets.push_back(
-								{ &_refr, caster->GetPosition().GetSquaredDistance(_refr.GetPosition()) });
+								{ _refr, caster->GetPosition().GetSquaredDistance(_refr->GetPosition()) });
 						}
 						return RE::BSContainer::ForEachResult::kContinue;
 					});
@@ -286,10 +292,10 @@ namespace Homing
 				RE::ProcessLists* tes = RE::ProcessLists::GetSingleton();
 
 				if (tes) {
-					tes->ForEachHighActor([=, &ans](RE::Actor& _refr) {
-						if (filter_target_cursor(_refr, caster, hostile_filter, check_los, angle, within_dist2)) {
-							if (caster->GetPosition().GetSquaredDistance(_refr.GetPosition()) < within_dist2) {
-								ans.push_back(&_refr);
+					tes->ForEachHighActor([=, &ans](RE::Actor* _refr) {
+						if (filter_target_cursor(*_refr, caster, hostile_filter, check_los, angle, within_dist2)) {
+							if (caster->GetPosition().GetSquaredDistance(_refr->GetPosition()) < within_dist2) {
+								ans.push_back(_refr);
 							}
 						}
 						return RE::BSContainer::ForEachResult::kContinue;
@@ -417,7 +423,7 @@ namespace Homing
 				else
 					phi = std::max(-max_alpha, needed_angle);
 				proj->linearVelocity =
-					FenixUtils::Geom::rotate(proj->linearVelocity, phi, proj->linearVelocity.UnitCross(final_dir));
+					FenixUtils::Geom::rotateVel(proj->linearVelocity, get_rotation_speed(proj, param) * dtime, final_dir);
 			}
 		}
 
@@ -498,8 +504,20 @@ namespace Homing
 			static bool ShouldUseDesiredTarget(RE::Projectile* proj)
 			{
 				bool ans = _ShouldUseDesiredTarget(proj);
-				auto target = proj->desiredTarget.get().get();
-				return ans || target;
+				if (auto target = proj->desiredTarget.get().get()) {
+					draw_point0<Colors::RED>(target->GetPosition());
+					draw_point0<Colors::BLU>(proj->GetPosition());
+
+					auto range = proj->GetProjectileBase()->data.range;
+
+					if (target->IsDead() || target->GetPosition().GetSquaredDistance(proj->GetPosition()) > range * range) {
+						proj->desiredTarget = {};
+						return ans;
+					}
+
+					return true;
+				}
+				return ans;
 			}
 
 			static inline REL::Relocation<decltype(ShouldUseDesiredTarget)> _ShouldUseDesiredTarget;
@@ -702,17 +720,20 @@ namespace Homing
 #endif
 	}
 
-	void init(const Json::Value& json_root)
+	void clear() { Storage::clear(); }
+	void clear_keys() { Storage::clear_keys(); }
+
+	void init(const std::string& filename, const Json::Value& json_root)
 	{
 		if (json_root.isMember("HomingData")) {
-			Storage::init(json_root["HomingData"]);
+			Storage::init(filename, json_root["HomingData"]);
 		}
 	}
 
-	void init_keys(const Json::Value& json_root)
+	void init_keys(const std::string& filename, const Json::Value& json_root)
 	{
 		if (json_root.isMember("HomingData")) {
-			Storage::init_keys(json_root["HomingData"]);
+			Storage::init_keys(filename, json_root["HomingData"]);
 		}
 	}
 }

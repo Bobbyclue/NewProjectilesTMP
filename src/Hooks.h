@@ -13,16 +13,24 @@ namespace Hooks
 		{
 			auto& trmpl = SKSE::GetTrampoline();
 
-			_TESForm__SetInitedFormFlag_140194B90 =
-				trmpl.write_call<5>(RELOCATION_ID(42920, 44100).address() + 0x396, Ctor);  // SkyrimSE.exe+74ACE2
+			// SkyrimSE.exe+74a978
+			_ctor1 = trmpl.write_call<5>(RELOCATION_ID(42920, 44100).address() + 0x28, ctor1);
+			// SkyrimSE.exe+74a766
+			_ctor2 = trmpl.write_call<5>(RELOCATION_ID(42919, 44099).address() + 0x16, ctor2);
 			_TESObjectREFR__ReadFromSaveGame_140286FD0 =
 				trmpl.write_call<5>(RELOCATION_ID(42953, 44134).address() + 0x52, LoadGame);  // SkyrimSE.exe+74D28B
 		}
 
 	private:
-		static void Ctor(RE::Projectile* proj, char a2)
+		static void ctor1(RE::Projectile* proj)
 		{
-			_TESForm__SetInitedFormFlag_140194B90(proj, a2);
+			_ctor1(proj);
+			init_NormalType(proj);
+		}
+
+		static void ctor2(RE::Projectile* proj)
+		{
+			_ctor2(proj);
 			init_NormalType(proj);
 		}
 
@@ -32,7 +40,8 @@ namespace Hooks
 			init_NormalType(proj);
 		}
 
-		static inline REL::Relocation<decltype(Ctor)> _TESForm__SetInitedFormFlag_140194B90;
+		static inline REL::Relocation<decltype(ctor1)> _ctor1;
+		static inline REL::Relocation<decltype(ctor1)> _ctor2;
 		static inline REL::Relocation<decltype(LoadGame)> _TESObjectREFR__ReadFromSaveGame_140286FD0;
 	};
 
