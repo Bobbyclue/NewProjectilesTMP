@@ -265,7 +265,7 @@ namespace Emitters
 			static void BSSoundHandle__ClearFollowedObject(char* sound)
 			{
 				_BSSoundHandle__ClearFollowedObject(sound);
-				auto proj = reinterpret_cast<RE::Projectile*>(sound - 0x128);
+				auto proj = reinterpret_cast<RE::Projectile*>(sound - 0x4C);  // SE 0x128
 				if (is_emitter(proj)) {
 					disable_emitter(proj);
 				}
