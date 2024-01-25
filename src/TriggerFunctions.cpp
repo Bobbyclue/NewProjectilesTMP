@@ -165,7 +165,6 @@ namespace TriggerFunctions
 
 	Function::Function(const RE::NiPoint3& linVel) : type(Type::ChangeSpeed), on_follower(false)
 	{
-		assert(linVel.x == 3.14f);
 		numb = NumberFunctionData(linVel);
 	}
 
